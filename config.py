@@ -1,26 +1,35 @@
 import json
+import subprocess
 # ตั้งค่าข้อมูลต่าง ๆ และสร้าง JSON ของแต่ละประเภทข้อมูล
 # (ให้ใส่ข้อมูลที่ไม่มีการกำหนดไว้ในโค้ดในส่วนนี้)
 
-# กำหนดข้อมูลที่ใช้ในลูป
-site_code = "BKKTM"
-count_cabinets = 2
-count_of_slave = count_cabinets-1
-deviceName = 'SmartSite_' + site_code
-ip_address = '192.168.11.104'
-count_device = 10
+with open('Data_from_userinterface.json', 'r') as openfile:
+    # Reading from json file
+    Data_from_userinterface = json.load(openfile)
 
-# สร้างรหัสตู้ cabinet และเก็บในอาร์เรย์ cabinet_code
+# กำหนดข้อมูลที่ใช้ในลูป
+site_code = Data_from_userinterface["site_code"]
+count_cabinets = int(Data_from_userinterface["count_cabinets"])
+count_of_slave = int(count_cabinets)-1
+deviceName = 'SmartSite_' + site_code
+ip_address = Data_from_userinterface["ip_address"]
+count_device = 10
+alarm_timer = int(Data_from_userinterface["alarm_timer"])
+
+interface_name = "eth0" 
+new_ip_address = ip_address 
+subnet_mask = "255.255.255.0" 
+
+try:
+    subprocess.run(["sudo", "ifconfig", interface_name, new_ip_address, "netmask", subnet_mask])
+    print(f"เปลี่ยน IP Address เป็น {new_ip_address} สำเร็จ")
+except subprocess.CalledProcessError as e:
+    print("เกิดข้อผิดพลาดในการเปลี่ยน IP Address:", e)
+
 cabinet_code = {}
 for i in range(1, count_cabinets+1):
     cabinet_code[i] = site_code + '-' + str(i)
     print(i)
-
-# # สร้างรูปแบบข้อมูล JSON สำหรับแต่ละประเภทข้อมูล
-# Interrupt = {
-#     "Main_out" : "",
-#     "Mod_out" : ""
-# }
 
 Data_for_config = {
     "site_code" : site_code,
@@ -28,7 +37,7 @@ Data_for_config = {
     "count_cabinets": str(count_cabinets),
     "deviceName":deviceName,
     "ip_address" : ip_address,
-    "alarm_timer" : 10
+    "alarm_timer" : alarm_timer
 }
 
 json_Data_to_WD = {
@@ -129,7 +138,7 @@ for i in range(1, count_cabinets):
     device_alarm_data = {
         "site_code": site_code,
         "cabinet_code": cabinet_code[i+1],
-        "alarm_timer": ""  # เปลี่ยนเป็นฟังก์ชันที่รับค่า alarm timer สำหรับตู้ที่ i
+        "alarm_timer": alarm_timer  # เปลี่ยนเป็นฟังก์ชันที่รับค่า alarm timer สำหรับตู้ที่ i
     }
     Device_alarm_on_off.append(device_alarm_data)
 # รวมข้อมูล JSON ทั้งหมดในโค้ดลงในออบเจ็กต์ JSON

@@ -14,6 +14,19 @@ import threading
 import os
 import psutil
 import random
+import netifaces as ni
+
+def get_mac_address(interface):
+    try:
+        mac_address = ni.ifaddresses(interface)[ni.AF_LINK][0]['addr']
+        return mac_address
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+# ระบุชื่ออินเตอร์เฟซที่คุณต้องการอ่าน MAC address
+interface_name = "eth0"
+mac_address = get_mac_address(interface_name)
 
 with open('Count_data.json', 'r') as openfile:
     # Reading from json file
@@ -31,7 +44,7 @@ alarm_timer = write_data_COUNT["alarm_timer"]
 # cvlc v4l2:///dev/video5 --sout '#transcode{vcodec=h264,acodec=none}:rtp{sdp=rtsp://:8554/}'
 
 # กำหนด URL ของกล้องผ่าน RTSP
-rtsp_url = "rtsp://192.168.11.104:8554/"
+rtsp_url = "rtsp://localhost:8554/"
 
 # เปิดการเชื่อมต่อกับกล้อง
 cap = cv2.VideoCapture(rtsp_url)
@@ -54,7 +67,7 @@ Time_interval_H = 8
 #GY
 last_time_GY = 0
 Time_interval_GY = 10
-alarm_timer = Time_interval_GY
+alarm_timer = alarm_timer
 #Time2Print
 last_time_print = 0
 Time_interval_print = 2
@@ -124,9 +137,7 @@ recording = False
 out = None
 
 # กำหนดข้อมูลสำหรับ MQTT Broker
-mqtt_broker_address = 'localhost'  # แทนที่ด้วยที่อยู่ของ MQTT Broker ของคุณ
-
-# เชื่อมต่อกับ MQTT Broker
+mqtt_broker_address = 'localhost' 
 client = mqtt.Client()
 client.connect(mqtt_broker_address, 1883)
 
@@ -135,7 +146,8 @@ successL = "True"
 messageL = "Lock Successful"
 successUL = "False"
 messageUL = "Unlock not successful"
-
+emerg_key_com = "null"
+Is_Emer = "No"
 
 while True:
     if cap_not_Connect == True:
@@ -144,7 +156,7 @@ while True:
     #จังหวะหัวใจเด้อ
     current_time_H = time.time()
     if current_time_H - last_time_H >= Time_interval_H:
-        last_time_H = current_time_H  # อัปเดตเวลาของ snapshot ล่าสุด
+        last_time_H = current_time_H 
         subprocess.run(['gpio', '-g', 'write', str(led_gpio_pin_H), str(1)])
         print("Heartbeat : 1")
     else:
@@ -208,17 +220,15 @@ while True:
     if abs(accel_x) > threshold_accel or abs(accel_y) > threshold_accel or abs(accel_z) > threshold_accel:
         print("มีการขยับเซ็นเซอร์ในแกนความเร็ว")
         subprocess.run(['gpio', '-g', 'write', str(led_gpio_pin_GYRO), str(1)])
-        # สร้างเหตุการณ์แจ้งเตือนที่นี่ (เช่น ส่งอีเมล์ หรือแจ้งเตือนผ่านแอพพลิเคชัน)
     else:
         current_time_GY = time.time()
-        if current_time_GY - last_time_GY >= Time_interval_GY:
-            last_time_GY = current_time_GY  # อัปเดตเวลาของ snapshot ล่าสุด
+        if current_time_GY - last_time_GY >= alarm_timer:
+            last_time_GY = current_time_GY 
             subprocess.run(['gpio', '-g', 'write', str(led_gpio_pin_GYRO), str(0)])
 
     if abs(gyro_x) > threshold_gyro or abs(gyro_y) > threshold_gyro or abs(gyro_z) > threshold_gyro:
         subprocess.run(['gpio', '-g', 'write', str(led_gpio_pin_GYRO), str(1)])
         print("มีการหมุนเซ็นเซอร์ในแกนอัตราความเร็ว")
-        # สร้างเหตุการณ์แจ้งเตือนที่นี่ (เช่น ส่งอีเมล์ หรือแจ้งเตือนผ่านแอพพลิเคชัน)
     else:
         current_time_GY = time.time()
         if current_time_GY - last_time_GY >= Time_interval_GY:
@@ -368,28 +378,39 @@ while True:
                 last_snapshot_time = current_time  # อัปเดตเวลาของ snapshot ล่าสุด
                 print(f"Saved snapshot: {snapshot_path}")
 
-    current_time_EMER = time.time()  # เวลาปัจจุบัน
-    if current_time_EMER - last_time_EMER >= time_interval_EMER:
-        # สร้าง Emergency key 10 หลัก
-        emergency_key = ''.join(random.choice('0123456789') for _ in range(10))
-        emergency_key = str(emergency_key)
-        last_time_EMER = current_time_EMER
+    # current_time_EMER = time.time()  # เวลาปัจจุบัน
+    # if current_time_EMER - last_time_EMER >= time_interval_EMER:
+    #     # สร้าง Emergency key 10 หลัก
+    #     emergency_key = ''.join(random.choice('0123456789') for _ in range(10))
+    #     emergency_key = str(emergency_key)
+    #     last_time_EMER = current_time_EMER
 
-    #BLUETOOTH
+    #from_API
+    Emerg_Key1 = "12345"
+    Emerg_Key2 = "67890"
+    #BLUETOOTH_if_lost_server
+    # emerg_key_com = "null"
     def check_internet_connection():
         try:
-            subprocess.check_output(["sudo", "ping", "-c", "1", "192.168.11.57"])
+            subprocess.check_output(["sudo", "ping", "-c", "1", "192.168.3.124"])
             return True
         except subprocess.CalledProcessError:
             return False
 
-        if check_internet_connection() == True:
-            # print("Internet is connected.")
-            subprocess.run(['gpio', '-g', 'write', str(led_gpio_pin_TCPIP), str(1)])
+    if check_internet_connection() == True:
+        # print("Internet is connected.")
+        subprocess.run(['gpio', '-g', 'write', str(led_gpio_pin_TCPIP), str(1)])
+        emerg_key_com = "null"
+        Is_Emer = "No"
 
-        else:
-            # print("Internet is not connected.")
-            subprocess.run(['gpio', '-g', 'write', str(led_gpio_pin_TCPIP), str(0)])
+    else:
+        # print("Internet is not connected.")
+        subprocess.run(['gpio', '-g', 'write', str(led_gpio_pin_TCPIP), str(0)])
+        emerg_key_com = Emerg_Key1 + Emerg_Key2
+        Is_Emer = "True"
+            
+
+        # return result_emerg_key_com, result_Is_Emer
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         print("Disconnect Camera")
@@ -401,8 +422,14 @@ while True:
         successUL = "False"
         messageUL = "Unlock not successful"
         break
+    
+    # result_emerg_key_com = emerg_key_com
+    # result_Is_Emer = Is_Emer
 
-    #JSON_TO_MQTT
+    # emerg_key_com,Is_Emer = check_internet_connection(result_emerg_key_com,result_Is_Emer)
+    check_internet_connection()
+    
+    # #JSON_TO_MQTT
     #write_to_JSON_MQTT
     Data_for_config = {
     "site_code" : site_code,
@@ -444,7 +471,7 @@ while True:
         "siteCode": site_code,
         "cabinetList": [
             {
-                "emergencyKey": emergency_key,
+                "emergencyKey": emerg_key_com,
                 "isCabinetActive": "True",
                 "cabinetCode": site_code + '-1',
                 "deviceName": deviceName
@@ -459,29 +486,30 @@ while True:
                 "site_code": site_code,
                 "cabinet_code": site_code + '-1',
                 "locked": lock_state,
-                "is_emergency": "No",
+                "is_emergency": Is_Emer,
                 "last_updated": date_Time_for_Json,
-                "emerg_key": "null",
-                "mac_address": "",
+                "emerg_key": emerg_key_com,
+                "mac_address": mac_address,
                 "device_name": deviceName
             }
         ]
     }
 
     Lock_cabinet = {
-        "successL": "",
-        "messageL": ""
+        "successL": successL,
+        "messageL": messageL
     }
 
     Unlock_cabinet = {
-        "successUL": "",
-        "messageUL": ""
+        "successUL": successUL,
+        "messageUL": messageUL
     }
 
     Device_API = {
         "successAPI": "",
         "messageAPI": ""
     }
+
 
     Device_status_report_API = {
         "site_code": "100CP",
@@ -571,7 +599,7 @@ while True:
     }
 
     Send_emergency_API = {
-        "emerg_key": emergency_key
+        "emerg_key": emerg_key_com
     }
 
     Device_alarm_on_off = {
@@ -609,7 +637,7 @@ while True:
     client.publish("send_TINKER/Send_emergency_API", json.dumps(Send_emergency_API))
     client.publish("send_TINKER/Device_alarm_on_off", json.dumps(Device_alarm_on_off))
     client.publish("send_TINKER/Data_Sensor", json.dumps(Data_Sensor))
-    client.publish("send_TINKER/Emergency_key", json.dumps(emergency_key))
+    client.publish("send_TINKER/Emergency_key", json.dumps(emerg_key_com))
     
     # if sd_card_usage.percent >= threshold_percent:
     #     Device_status_report_API[7]["event_type_id"] = "8"

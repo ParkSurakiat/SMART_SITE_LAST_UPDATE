@@ -15,6 +15,7 @@ import os
 import psutil
 import random
 import netifaces as ni
+from flask import Flask, render_template
 
 def get_mac_address(interface):
     try:
@@ -322,7 +323,7 @@ while True:
         break
     
     # แสดงภาพที่ได้จากกล้อง
-    cv2.imshow("Camera Steaming", frame)
+    # cv2.imshow("Camera Steaming", frame)
 
     #รอรับคำสั่งจากผู้ใช้
     if cv2.waitKey(1) & 0xFF == ord('o') and not recording:
@@ -411,6 +412,7 @@ while True:
             
 
         # return result_emerg_key_com, result_Is_Emer
+    
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         print("Disconnect Camera")
